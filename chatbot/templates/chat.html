@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Django Assistant Chatbot</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script>
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const chatBox = document.getElementById("chat-box");
+      chatBox.scrollTop = chatBox.scrollHeight;
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style>
+    /* Hide scrollbar for Webkit browsers (Chrome, Safari) */
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+
+    /* Hide scrollbar for Firefox */
+    .scrollbar-hide {
+        -ms-overflow-style: none; /* IE and Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+</style>
+</head>
+
+<body class="bg-gray-900 text-white min-h-screen flex flex-col font-sans">
+
+  <header class="p-4 bg-gray-800 shadow text-center text-xl font-semibold">
+    Django AI Assistant 🤖
+  </header>
+
+  <main class="flex-1 overflow-hidden px-[20vw]">
+    <div id="chat-box" class="h-[calc(100vh-144px)] scrollbar-hide overflow-y-auto px-4 py-6 space-y-4">
+      {% for message in messages %}
+        <div class="{% if message.role == 'user' %}text-right{% else %}text-left{% endif %}">
+          <div class="inline-block max-w-2xl px-4 py-3 rounded-lg shadow
+                      {% if message.role == 'user' %}bg-blue-600 text-white{% else %}bg-gray-700 text-gray-100{% endif %}">
+            {{ message.content|safe }}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </main>
+
+  <form id="chat-form" class="bg-gray-800 p-4 flex gap-2 shadow-lg fixed bottom-0 left-0 right-0" autocomplete="off">
+    <input id="message" name="message" type="text"
+           class="flex-1 px-4 py-2 rounded-md bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+           placeholder="Ask Chatppt anything related to Django..." required />
+    <button type="submit"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-all">
+      Send
+    </button>
+  </form>
+
+  <script>
+    const chatBox = document.getElementById("chat-box");
+    const form = document.getElementById("chat-form");
+    const input = document.getElementById("message");
+    const csrfToken = getCookie("csrftoken");
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      const userMessage = input.value;
+
+      // Render user message
+      const userDiv = document.createElement("div");
+      userDiv.className = "text-right";
+      userDiv.innerHTML = `<div class="inline-block max-w-2xl px-4 py-3 rounded-lg shadow bg-blue-600 text-white">${marked.parse(userMessage)}</div>`;
+      chatBox.appendChild(userDiv);
+      chatBox.scrollTop = chatBox.scrollHeight;
+
+      fetch("{% url 'getResponse' %}", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": csrfToken,
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: `message=${encodeURIComponent(userMessage)}`
+      })
+      .then(res => res.json())
+      .then(data => {
+        const replyDiv = document.createElement("div");
+        replyDiv.className = "text-left";
+        replyDiv.innerHTML = `<div class="inline-block max-w-2xl px-4 py-3 rounded-lg shadow bg-gray-700 text-gray-100">${marked.parse(data.reply)}</div>`;
+        chatBox.appendChild(replyDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        input.value = "";
+      });
+    });
+  </script>
+</body>
+</html>
